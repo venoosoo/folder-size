@@ -24,7 +24,7 @@ cargo run -- [OPTIONS]
 ```
 🔧 Options
 
-Flag	Description
+ Flag	    Description
 
 --symlink	Follow and resolve symlinks
 
