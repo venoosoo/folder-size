@@ -8,7 +8,6 @@ Recursively calculates the size of directories and files, with support for:
 - 🔁 Configurable depth limit
 - 🧰 CLI-powered interface via [`clap`]
 
----
 
 ## 🛠️ Features
 
@@ -18,7 +17,6 @@ Recursively calculates the size of directories and files, with support for:
 - 🧱 Shows size of each file or folder (`--directory-b`)
 - ⬇️ Limit recursion depth (`--depth-limit <n>`)
 
----
 
 ## 🚀 Usage
 
