@@ -26,11 +26,11 @@ cargo run -- [OPTIONS]
 
  Flag	    Description
 
---symlink	Follow and resolve symlinks
+--symlink:	Follow and resolve symlinks
 
---directory-b	Print size breakdown for each directory/file
+--directory-b:	Print size breakdown for each directory/file
 
---depth-limit <n>	Limit recursion depth (default: 10)
+--depth-limit <n> 	Limit recursion depth (default: 10)
 
 🔍 Example
 ```
