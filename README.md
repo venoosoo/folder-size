@@ -30,7 +30,7 @@ cargo run -- [OPTIONS]
 
 --directory-b:	Print size breakdown for each directory/file
 
---depth-limit <n> 	Limit recursion depth (default: 10)
+--depth-limit <n>:	Limit recursion depth (default: 10)
 
 🔍 Example
 ```
