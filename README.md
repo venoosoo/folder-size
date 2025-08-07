@@ -24,16 +24,16 @@ Recursively calculates the size of directories and files, with support for:
 
 ```bash
 cargo run -- [OPTIONS]
-
+```
 🔧 Options
 Flag	Description
 --symlink	Follow and resolve symlinks
 --directory-b	Print size breakdown for each directory/file
 --depth-limit <n>	Limit recursion depth (default: 10)
 🔍 Example
-
+```
 cargo run -- --symlink --directory-b --depth-limit 5
-
+```
 🧪 Sample Output
 
 symlink: true
@@ -51,9 +51,9 @@ Total size: 5768007189 bytes, 5632819 kilobytes, 5500 megabytes, 5 gigabytes
     clap — command-line argument parser
 
 Install them automatically with:
-
+```
 cargo build
-
+```
 📄 License
 
 MIT License
