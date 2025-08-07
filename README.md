@@ -1,12 +1,11 @@
 # 📦 Rust folder size cli tool
 
-A fast and lightweight disk usage analyzer written in Rust.  
+A fast and lightweight folder analyzer written in Rust.  
 Recursively calculates the size of directories and files, with support for:
 
 - 🔗 Symlink resolution
 - 🗂️ Per-directory size breakdown
 - 🔁 Configurable depth limit
-- 🧰 CLI-powered interface via [`clap`]
 
 
 ## 🛠️ Features
