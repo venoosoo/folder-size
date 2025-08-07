@@ -23,10 +23,15 @@ Recursively calculates the size of directories and files, with support for:
 cargo run -- [OPTIONS]
 ```
 🔧 Options
+
 Flag	Description
+
 --symlink	Follow and resolve symlinks
+
 --directory-b	Print size breakdown for each directory/file
+
 --depth-limit <n>	Limit recursion depth (default: 10)
+
 🔍 Example
 ```
 cargo run -- --symlink --directory-b --depth-limit 5
