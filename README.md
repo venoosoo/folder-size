@@ -17,6 +17,12 @@ Recursively calculates the size of directories and files, with support for:
 - ⬇️ Limit recursion depth (`--depth-limit <n>`)
 
 
+
+## 📥 Download
+```
+yay -S folder-size
+```
+
 ## 🚀 Usage
 
 ```bash
