@@ -63,8 +63,6 @@ cargo build
 
 MIT License
 
-🙋‍♂️ venoosoo
-
 Made by ven — Rust beginner
 
 
