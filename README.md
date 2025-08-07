@@ -1,4 +1,4 @@
-# 📦 Rust Disk Usage Analyzer
+# 📦 Rust folder size cli tool
 
 A fast and lightweight disk usage analyzer written in Rust.  
 Recursively calculates the size of directories and files, with support for:
