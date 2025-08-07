@@ -37,14 +37,22 @@ cargo run -- --symlink --directory-b --depth-limit 5
 🧪 Sample Output
 
 symlink: true
+
 directory_breakdown: true
+
 depth_limit: 5
-../../vscodium
+
+../../folder_size
+
 ├── bin/         (2.1 MB)
+
 ├── lib/         (490.6 MB)
+
 ├── LICENSE.txt  (11 KB)
+
 ├── README.md    (5 KB)
-Total size: 5768007189 bytes, 5632819 kilobytes, 5500 megabytes, 5 gigabytes
+
+Total size: 492.3MB
 
 📦 Dependencies
 
