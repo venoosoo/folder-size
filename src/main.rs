@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::io;
 use clap::Parser;
 use std::env;
@@ -23,7 +23,9 @@ struct Args {
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    let path: std::path::PathBuf = env::current_dir()?;
+    //let path: std::path::PathBuf = env::current_dir()?;
+    let path: PathBuf = PathBuf::from("/home/ven/.steam");
+
     let mut visited: HashSet<std::path::PathBuf> = HashSet::new();
 
     println!("{:?}", path);
@@ -54,8 +56,10 @@ fn get_file_size(file_path: &Path,args: &Args, depth: &mut u8, visited: &mut Has
         } else {
             file_path.parent().unwrap_or(Path::new("/")).join(link_target)
         };
+
         //for the symlinks that using relative path
         let target_path = resolved_path.canonicalize()?;
+
         if target_path.is_dir() && *depth <= args.depth_limit {
             *depth += 1;
             visited.insert(target_path.clone());
@@ -73,12 +77,27 @@ fn get_file_size(file_path: &Path,args: &Args, depth: &mut u8, visited: &mut Has
 
 fn get_folder_size(path: &Path, args: &Args, depth: &mut u8, visited: &mut HashSet<std::path::PathBuf>) -> io::Result<u64> {
     let mut total: u64 = 0;
-    let entries: fs::ReadDir = fs::read_dir(path)?;
+    let entries = match fs::read_dir(path) {
+        Ok(read_dir) => read_dir,
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+            eprintln!("Permission denied accessing {:?}, skipping...", path);
+            return Ok(0); // skip this directory and continue
+        }
+        Err(e) => return Err(e),
+    };
     for entry_result in entries {
         let entry: fs::DirEntry = entry_result?;
         let file_path: std::path::PathBuf = entry.path();
+        let cannonical = match file_path.canonicalize() {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("Warning: could not canonicalize (maybe broken symlink)  {:?}: {}", file_path, e);
+                return Ok(0); // Skip this file/folder gracefully
+            }
+        };
 
-        let cannonical = file_path.canonicalize()?;
+
+
 
         //symlink infinite recursion fix
         if visited.contains(&cannonical) {
