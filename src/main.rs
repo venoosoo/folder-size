@@ -23,8 +23,7 @@ struct Args {
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    //let path: std::path::PathBuf = env::current_dir()?;
-    let path: PathBuf = PathBuf::from("/home/ven/.steam");
+    let path: std::path::PathBuf = env::current_dir()?;
 
     let mut visited: HashSet<std::path::PathBuf> = HashSet::new();
 
