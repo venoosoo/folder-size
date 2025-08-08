@@ -1,9 +1,9 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::io;
-use clap::Parser;
-use std::env;
 use std::collections::HashSet;
+use std::env;
+use std::fs;
+use std::io;
+use std::path::{Path, PathBuf};
+use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -23,111 +23,193 @@ struct Args {
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    let path: std::path::PathBuf = env::current_dir()?;
+    let path = env::current_dir()?;
 
-    let mut visited: HashSet<std::path::PathBuf> = HashSet::new();
 
-    println!("{:?}", path);
 
-    let size: u64 = get_folder_size(&path, &args, &mut 0, &mut visited)?;
+    let mut visited: HashSet<PathBuf> = HashSet::new();
 
-    println!("Total size: {} ", human_readable_size(size));
+    println!("Starting scan at: {:?}", path);
+
+    let total_size = get_folder_size(&path, &args, 0, &mut visited)?;
+
+    println!("Total size: {}", human_readable_size(total_size));
 
     Ok(())
-    
 }
 
-
-fn check_sym_link(file_path: &Path) -> io::Result<bool> {
-    let meta = fs::symlink_metadata(file_path)?;
-    Ok(meta.file_type().is_symlink())
+fn check_symlink(meta: &fs::Metadata) -> bool {
+    meta.file_type().is_symlink()
 }
 
+fn get_file_size(
+    file_path: &Path,
+    args: &Args,
+    depth: u8,
+    visited: &mut HashSet<PathBuf>,
+) -> io::Result<u64> {
+    let meta = match fs::symlink_metadata(file_path) {
+        Ok(m) => m,
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+            eprintln!("Permission denied reading metadata for {:?}, skipping...", file_path);
+            return Ok(0);
+        }
+        Err(e) => return Err(e),
+    };
 
+    // Skip special files like sockets, pipes, devices (not files or dirs)
+    if !meta.file_type().is_file() && !meta.file_type().is_dir() {
+        eprintln!("Skipping special file (not regular file or dir): {:?}", file_path);
+        return Ok(0);
+    }
 
-fn get_file_size(file_path: &Path,args: &Args, depth: &mut u8, visited: &mut HashSet<std::path::PathBuf>) -> io::Result<u64> {
-    let meta = fs::symlink_metadata(file_path)?;
+    if check_symlink(&meta) && args.symlink {
+        let link_target = match fs::read_link(file_path) {
+            Ok(target) => target,
+            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+                eprintln!("Permission denied reading symlink target for {:?}, skipping...", file_path);
+                return Ok(0);
+            }
+            Err(e) => return Err(e),
+        };
 
-    if check_sym_link(file_path)? && args.symlink {
-        let link_target = fs::read_link(file_path)?;
         let resolved_path = if link_target.is_absolute() {
             link_target
         } else {
             file_path.parent().unwrap_or(Path::new("/")).join(link_target)
         };
 
-        //for the symlinks that using relative path
-        let target_path = resolved_path.canonicalize()?;
+        let target_path = match resolved_path.canonicalize() {
+            Ok(p) => p,
+            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+                eprintln!("Permission denied canonicalizing symlink target {:?}, skipping...", resolved_path);
+                return Ok(0);
+            }
+            Err(e) => return Err(e),
+        };
 
-        if target_path.is_dir() && *depth <= args.depth_limit {
-            *depth += 1;
+        if visited.contains(&target_path) {
+            println!("Already visited symlink target: {:?}", target_path);
+            return Ok(0);
+        }
+
+        if target_path.is_dir() && depth < args.depth_limit {
             visited.insert(target_path.clone());
-            let size = get_folder_size(&target_path,&args, depth, visited)?;
-            *depth -= 1;
-            return Ok(size)
+            let size = get_folder_size(&target_path, args, depth + 1, visited)?;
+            Ok(size)
         } else {
             visited.insert(target_path.clone());
-            return get_file_size(&target_path,&args, depth,visited);
+            let size = get_file_size(&target_path, args, depth, visited)?;
+            Ok(size)
         }
     } else {
+        // Regular file or directory (should be file here)
         Ok(meta.len())
     }
 }
 
-fn get_folder_size(path: &Path, args: &Args, depth: &mut u8, visited: &mut HashSet<std::path::PathBuf>) -> io::Result<u64> {
-    let mut total: u64 = 0;
+fn get_folder_size(
+    path: &Path,
+    args: &Args,
+    depth: u8,
+    visited: &mut HashSet<PathBuf>,
+) -> io::Result<u64> {
+    if depth > args.depth_limit {
+        println!("Depth limit reached at {:?}", path);
+        return Ok(0);
+    }
+
+    let canonical_path = match path.canonicalize() {
+        Ok(p) => p,
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+            eprintln!("Permission denied canonicalizing {:?}, skipping...", path);
+            return Ok(0);
+        }
+        Err(e) => {
+            eprintln!("Warning: could not canonicalize {:?}: {}", path, e);
+            return Ok(0);
+        }
+    };
+
+    if visited.contains(&canonical_path) {
+        println!("Already visited: {:?}", canonical_path);
+        return Ok(0);
+    }
+
+    visited.insert(canonical_path.clone());
+
     let entries = match fs::read_dir(path) {
         Ok(read_dir) => read_dir,
-        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
-            eprintln!("Permission denied accessing {:?}, skipping...", path);
-            return Ok(0); // skip this directory and continue
+        Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+            eprintln!("Permission denied accessing directory {:?}, skipping...", path);
+            return Ok(0);
         }
         Err(e) => return Err(e),
     };
+
+    let mut total = 0u64;
+
     for entry_result in entries {
-        let entry: fs::DirEntry = entry_result?;
-        let file_path: std::path::PathBuf = entry.path();
-        let cannonical = match file_path.canonicalize() {
+        let entry = match entry_result {
+            Ok(en) => en,
+            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+                eprintln!("Permission denied reading directory entry in {:?}, skipping...", path);
+                continue;
+            }
+            Err(e) => return Err(e),
+        };
+
+        let file_path = entry.path();
+
+        // Try canonicalize for visited check, skip on permission denied
+        let canonical = match file_path.canonicalize() {
             Ok(p) => p,
+            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+                eprintln!("Permission denied when canonicalizing {:?}, skipping...", file_path);
+                continue;
+            }
             Err(e) => {
-                eprintln!("Warning: could not canonicalize (maybe broken symlink)  {:?}: {}", file_path, e);
-                return Ok(0); // Skip this file/folder gracefully
+                eprintln!("Warning: could not canonicalize {:?}: {}", file_path, e);
+                continue;
             }
         };
 
-
-
-
-        //symlink infinite recursion fix
-        if visited.contains(&cannonical) {
-            println!("Already visited: {:?}", file_path);
-            return Ok(0)
+        if visited.contains(&canonical) {
+            println!("Already visited: {:?}", canonical);
+            continue;
         }
 
-        if file_path.is_dir() && *depth <= args.depth_limit {
-            if check_sym_link(&file_path)? && !args.symlink {
-                println!("skipping simlink");
-                println!("to enable add --symlink to args");
+        let meta = match fs::symlink_metadata(&file_path) {
+            Ok(m) => m,
+            Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {
+                eprintln!("Permission denied reading metadata for {:?}, skipping...", file_path);
                 continue;
             }
-            *depth += 1;
-            visited.insert(file_path.clone());
-            let size = get_folder_size(&file_path,&args, depth, visited)?;
+            Err(e) => return Err(e),
+        };
+
+        if meta.is_dir() {
+            if check_symlink(&meta) && !args.symlink {
+                println!("Skipping symlink directory: {:?}", file_path);
+                println!("To enable, add --symlink");
+                continue;
+            }
+
+            let size = get_folder_size(&file_path, args, depth + 1, visited)?;
+
             if args.directory_b {
-                println!("├── {:?}    ({})", file_path, human_readable_size(size));  
+                println!("├── {:?}    ({})", file_path, human_readable_size(size));
             }
             total += size;
-            *depth -= 1;
+        } else if meta.is_file() {
+            let size = get_file_size(&file_path, args, depth, visited)?;
 
-            
-        } else if file_path.is_file() {
-            visited.insert(file_path.clone());
-            let size = get_file_size(&file_path,&args, depth, visited)?;
             if args.directory_b {
-                println!("├── {:?}    ({})", file_path, human_readable_size(size));  
+                println!("├── {:?}    ({})", file_path, human_readable_size(size));
             }
             total += size;
-
+        } else {
+            eprintln!("Skipping special file type: {:?}", file_path);
         }
     }
 
@@ -135,9 +217,9 @@ fn get_folder_size(path: &Path, args: &Args, depth: &mut u8, visited: &mut HashS
 }
 
 fn human_readable_size(bytes: u64) -> String {
-    let kb = 1024.0;
-    let mb = kb * 1024.0;
-    let gb = mb * 1024.0;
+    let kb = 1024f64;
+    let mb = kb * 1024f64;
+    let gb = mb * 1024f64;
 
     let b = bytes as f64;
 
