@@ -26,7 +26,7 @@ yay -S folder-size
 ## 🚀 Usage
 
 ```bash
-cargo run -- [OPTIONS]
+folder-size [OPTIONS]
 ```
 🔧 Options
 
@@ -40,15 +40,9 @@ cargo run -- [OPTIONS]
 
 🔍 Example
 ```
-cargo run -- --symlink --directory-b --depth-limit 5
+folder-size --symlink --directory-b --depth-limit 5
 ```
 🧪 Sample Output
-
-symlink: true
-
-directory_breakdown: true
-
-depth_limit: 5
 
 ../../folder_size
 
